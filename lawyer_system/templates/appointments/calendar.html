@@ -1,0 +1,508 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+{% csrf_token %}
+<div class="container">
+    <h1>Управление расписанием</h1>
+    {% if user.lawyerprofile %}
+        
+    {% endif %}
+    <!-- Навигация и заголовок -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <button class="btn btn-outline-primary" onclick="changeMonth(-1)">&laquo; Предыдущий</button>
+        <h2 class="text-center mb-0" id="month-header"></h2>
+        <button class="btn btn-outline-primary" onclick="changeMonth(1)">Следующий &raquo;</button>
+    </div>
+
+    <!-- Дни недели -->
+    <div class="row row-cols-7 weekdays-row mb-2">
+        <div class="col text-center fw-bold">Пн</div>
+        <div class="col text-center fw-bold">Вт</div>
+        <div class="col text-center fw-bold">Ср</div>
+        <div class="col text-center fw-bold">Чт</div>
+        <div class="col text-center fw-bold">Пт</div>
+        <div class="col text-center fw-bold">Сб</div>
+        <div class="col text-center fw-bold">Вс</div>
+    </div>
+
+    <!-- Сетка календаря -->
+    <div id="calendar-grid"></div>
+
+    <!-- Блок выбора времени -->
+    <div id="time-slots" class="mt-4 card" style="display: none;">
+        <div class="card-body">
+            <h4 class="card-title" id="selected-date"></h4>
+            <div id="slot-list" class="list-group mb-3"></div>
+            {% if user.lawyerprofile %}
+                <button id="confirm-btn" class="btn btn-danger w-100" style="display: none;" onclick="deleteSlot(selectedSlotId)">
+                    Удалить слот
+                </button>
+            {% else %}
+                <button id="confirm-btn" class="btn btn-success w-100" style="display: none;" onclick="bookSlot(selectedSlotId)">
+                    Записаться
+                </button>
+            {% endif %}
+            {% if user.lawyerprofile %}
+                <!-- Новый input для ввода часов -->
+                <input type="number" id="slotHour" class="form-control mb-2" placeholder="Введите час (0-23)" min="0" max="23">
+                <button id="add-time-btn" class="btn btn-primary w-100" onclick="openCreateSlotModal(selectedDateForSlot)">Добавить время</button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div id="createSlotForm" style="display: none;">
+    <label for="slotStartTime">Время начала:</label>
+    <input type="time" id="slotStartTime"><br>
+    <label for="slotEndTime">Время окончания:</label>
+    <input type="time" id="slotEndTime"><br>
+    <button onclick="createSlot()">Добавить время</button>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const isLawyer = {{ user.lawyerprofile|yesno:"true,false" }};
+    let slotsData = JSON.parse('{{ slots_json|escapejs }}');
+    let currentDate = new Date('{{ current_date }}');
+    window.selectedSlotId = null;
+    window.selectedDateForSlot = null;
+    const monthNames = [
+        "Январь", "Февраль", "Март", "Апрель",
+        "Май", "Июнь", "Июль", "Август",
+        "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"
+    ];
+
+    // Основная функция генерации календаря
+    function initCalendar() {
+        const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+        const today = new Date().setHours(0,0,0,0);
+        
+        // Обновление заголовка
+        document.getElementById('month-header').textContent = 
+            `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+
+        // Генерация сетки
+        let calendarHTML = '<div class="row row-cols-7 g-1">';
+        let dayCounter = 0;
+
+        // Пустые ячейки в начале
+        const startDay = (firstDay.getDay() + 6) % 7; // 0-Пн, 1-Вт...6-Вс
+        for (let i = 0; i < startDay; i++) {
+            calendarHTML += '<div class="col p-1"></div>';
+            dayCounter++;
+        }
+
+        // Заполнение дней месяца
+        for (let day = 1; day <= lastDay.getDate(); day++) {
+            const currentDayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+            currentDayDate.setHours(0,0,0,0);
+            
+            // Проверяем, является ли день прошедшим
+            const isPast = currentDayDate.getTime() < today;
+            
+            // Проверяем наличие слотов
+            const hasSlots = slotsData.some(s => {
+                const slotDate = new Date(s.fields.start_time);
+                return (
+                    slotDate.getDate() === day &&
+                    slotDate.getMonth() === currentDate.getMonth() &&
+                    slotDate.getFullYear() === currentDate.getFullYear() &&
+                    !s.fields.is_booked
+                );
+            });
+
+            console.log(`Day ${day}: isPast=${isPast}, hasSlots=${hasSlots}`); // Отладочный вывод
+
+            calendarHTML += `
+                <div class="col p-1">
+                    <div class="calendar-day ${isPast ? 'past-day' : ''} ${hasSlots ? 'available-day' : ''}"
+                        data-date="${currentDayDate.toISOString().split('T')[0]}"
+                        onclick="showTimeSlots(this)"
+                        style="cursor: pointer;">
+                        ${day}
+                        ${hasSlots ? '<div class="slot-indicator"></div>' : ''}
+                    </div>
+                </div>`;
+            
+            dayCounter++;
+            // Перенос строки каждые 7 дней
+            if (dayCounter % 7 === 0) {
+                calendarHTML += '</div><div class="row row-cols-7 g-1">';
+            }
+        }
+
+        // Добавление пустых ячеек в конце
+        while (dayCounter % 7 !== 0) {
+            calendarHTML += '<div class="col p-1"></div>';
+            dayCounter++;
+        }
+
+        document.getElementById('calendar-grid').innerHTML = calendarHTML + '</div>';
+        document.getElementById('time-slots').style.display = 'none';
+    }
+
+    // Функция загрузки слотов
+    async function loadSlots(year, month) {
+        try {
+            console.log(`Loading slots for ${year}-${month}`);
+            
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            
+            // Обновляем URL для API
+            const response = await fetch(`/appointments/slots/?year=${year}&month=${month}`, {
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Accept': 'application/json',
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            slotsData = JSON.parse(data.slots);
+            console.log(`data.slots: ${data.slots}`);
+            console.log(`Loaded ${slotsData.length} slots for ${year}-${month}`);
+            
+            initCalendar();
+        } catch (error) {
+            console.error('Error loading slots:', error);
+            alert('Ошибка при загрузке данных. Попробуйте обновить страницу.');
+        }
+    }
+
+    // Обновляем функцию смены месяца
+    window.changeMonth = function(offset) {
+        const newDate = new Date(currentDate);
+        newDate.setMonth(newDate.getMonth() + offset);
+        currentDate = newDate;
+        
+        // ВАЖНО: месяцы в JavaScript начинаются с 0, поэтому добавляем 1
+        const year = newDate.getFullYear();
+        const month = newDate.getMonth() + 1;
+        
+        console.log(`Changing to ${year}-${month}`); // Отладочный вывод
+        loadSlots(year, month);
+    }
+
+    // Показать доступное время
+    window.showTimeSlots = function(element) {
+        const day = parseInt(element.textContent);
+        // Construct local date string manually (YYYY-MM-DD)
+        selectedDateForSlot = `${currentDate.getFullYear()}-${(currentDate.getMonth()+1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+        window.selectedDateForSlot = selectedDateForSlot;
+        const selectedDate = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth(),
+            day
+        );
+        
+        // Сброс выбора
+        document.querySelectorAll('.calendar-day').forEach(d => 
+            d.classList.remove('selected-day'));
+        element.classList.add('selected-day');
+        
+        // Фильтрация слотов
+        const filteredSlots = slotsData.filter(s => {
+            const slotDate = new Date(s.fields.start_time);
+            return (
+                slotDate.getDate() === day &&
+                slotDate.getMonth() === currentDate.getMonth() &&
+                !s.fields.is_booked
+            );
+        });
+        // Группируем слоты по времени
+        const timeGroups = {};
+        filteredSlots.forEach(s => {
+            const time = new Date(s.fields.start_time);
+            const hour = time.getHours();
+            if (!timeGroups[hour]) {
+                timeGroups[hour] = [];
+            }
+            timeGroups[hour].push(s);
+        });
+        // Создаем HTML для сгруппированных слотов
+        const slotsHTML = Object.entries(timeGroups).map(([hour, slots]) => `
+            <div class="time-group mb-3">
+                <h5 class="time-header">${hour}:00</h5>
+                <div class="time-slots-grid">
+                    ${slots.map(s => `<button class="time-slot-btn ${isLawyer ? 'lawyer-slot' : ''}" onclick="selectSlot('${s.pk}')">
+                        ${new Date(s.fields.start_time).toLocaleTimeString('ru-RU', {
+                            hour: '2-digit', 
+                            minute: '2-digit'
+                        })}
+                    </button>`).join('')}
+                </div>
+            </div>
+        `).join('');
+        document.getElementById('selected-date').textContent = 
+            selectedDate.toLocaleDateString('ru-RU', { 
+                day: 'numeric', 
+                month: 'long',
+                weekday: 'long'
+            });
+        document.getElementById('slot-list').innerHTML = slotsHTML;
+        document.getElementById('time-slots').style.display = 'block';
+        document.getElementById('confirm-btn').style.display = 'none';
+    }
+    // Обновляем функцию выбора слота
+    window.selectSlot = function(slotId) {
+        window.selectedSlotId = slotId;
+        // Убираем активный класс со всех кнопок времени
+        document.querySelectorAll('.time-slot-btn').forEach(btn =>
+            btn.classList.remove('active'));
+        // Находим кнопку, на которой произошло событие
+        const targetButton = document.querySelector(`.time-slot-btn[onclick="selectSlot('${slotId}')"]`);
+        // Проверяем, что кнопка была найдена
+        if (targetButton) {
+            // Добавляем активный класс выбранной кнопке
+            targetButton.classList.add('active');
+        }
+        // Показываем кнопку подтверждения
+        document.getElementById('confirm-btn').style.display = 'block';
+    }
+    window.bookSlot = function(slotId) {
+        window.location.href = `/appointments/create/${slotId}/`;
+    }
+    window.deleteSlot = async function(slotId) {
+        if (confirm("Вы уверены, что хотите удалить этот слот?")) {
+            try {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                const response = await fetch(`/appointments/delete_slot/${slotId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (response.ok) {
+                    alert("Слот успешно удален.");
+                    window.location.reload(); // Refresh the page
+                } else {
+                    alert("Ошибка при удалении слота.");
+                }
+            } catch (error) {
+                console.error("Ошибка:", error);
+                alert("Произошла ошибка при отправке запроса.");
+            }
+        }
+    }
+    window.openCreateSlotModal = function(date) {
+        const isLawyer = {{ user.lawyerprofile|yesno:"true,false" }};
+        if (!isLawyer) return;
+        if(date) {
+            selectedDateForSlot = date;
+        }
+        // Read the hour input value from the new field
+        const hourValue = document.getElementById('slotHour').value;
+        if(hourValue !== "") {
+            // Format hour as two digits and set start and end time values
+            const formattedHour = hourValue.padStart(2, '0');
+            document.getElementById('slotStartTime').value = formattedHour + ":00";
+            let endHour = (parseInt(hourValue, 10) + 1).toString().padStart(2, '0');
+            document.getElementById('slotEndTime').value = endHour + ":00";
+        } else {
+            document.getElementById('slotStartTime').value = "";
+            document.getElementById('slotEndTime').value = "";
+        }
+        document.getElementById('createSlotForm').style.display = 'block';
+        document.getElementById('add-time-btn').style.display = 'none';
+    }
+    window.createSlot = async function() {
+        const startTime = document.getElementById('slotStartTime').value;
+        const endTime = document.getElementById('slotEndTime').value;
+        if (!startTime || !endTime) {
+            alert("Пожалуйста, введите время начала и окончания.");
+            return;
+        }
+        try {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const response = await fetch(`/appointments/create_slot_from_day/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    date: selectedDateForSlot,
+                    startTime: startTime,
+                    endTime: endTime
+                })
+            });
+            if (response.ok) {
+                alert("Слот успешно создан.");
+                window.location.reload();
+            } else {
+                alert("Ошибка при создании слота.");
+            }
+        } catch (error) {
+            console.error("Ошибка:", error);
+            alert("Произошла ошибка при отправке запроса.");
+        }
+    }
+    // Первоначальная инициализация
+    initCalendar();
+});
+</script>
+<style>
+.calendar-day {
+    position: relative;
+    height: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #f8f9fa;
+    border-radius: 8px;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+.weekdays-row {
+    background: #e9ecef;
+    border-radius: 8px;
+    padding: 10px 0;
+}
+.available-day {
+    background: #d4edda !important;
+    border-color: #c3e6cb !important;
+}
+.past-day {
+    background: #f8f9fa !important;
+    color: #adb5bd !important;
+    cursor: not-allowed;
+}
+.selected-day {
+    background: #cce5ff !important;
+    border-color: #b8daff !important;
+    transform: scale(1.05);
+}
+.list-group-item.active {
+    background-color: #e3f2fd;
+    border-color: #90caf9;
+}
+#time-slots {
+    animation: fadeIn 0.3s ease;
+    max-width: 600px;
+    margin: 0 auto;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.calendar-day:not(.past-day):hover {
+    transform: scale(1.05);
+    transition: transform 0.2s;
+}
+.available-day:not(.past-day) {
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.slot-indicator {
+    width: 8px;
+    height: 8px;
+    background-color: #28a745;
+    border-radius: 50%;
+    position: absolute;
+    bottom: 8px;
+}
+#createSlotForm {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+#createSlotForm label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+#createSlotForm input[type="time"] {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+#createSlotForm button {
+    background-color: #007bff;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+#createSlotForm button:hover {
+    background-color: #0056b3;
+}
+.available-day:not(.past-day):hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.time-group {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+}
+.time-header {
+    color: #495057;
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+.time-slots-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+}
+.time-slot-btn {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 8px 12px;
+    transition: all 0.2s;
+    cursor: pointer;
+    font-size: 0.9rem;
+    width: 100%;
+}
+.time-slot-btn:hover {
+    background: #e9ecef;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.time-slot-btn.active {
+    background: #cce5ff !important;
+    border-color: #b8daff !important;
+    color: #004085 !important;
+    font-weight: bold;
+    transform: scale(1.05);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+#selected-date {
+    color: #495057;
+    text-transform: capitalize;
+    margin-bottom: 20px;
+    font-size: 1.25rem;
+}
+#confirm-btn {
+    margin-top: 20px;
+    padding: 12px;
+    font-weight: 500;
+    font-size: 1.1rem;
+    transition: all 0.3s;
+}
+#confirm-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %}

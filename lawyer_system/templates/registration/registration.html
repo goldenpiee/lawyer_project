@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <h2 class="mb-4">Регистрация клиента</h2>
+    
+    <form method="post">
+      {% csrf_token %}
+      
+      {% if form.errors %}
+        <div class="alert alert-danger">
+          {% for field, errors in form.errors.items %}
+            {% for error in errors %}
+              {{ error }}<br>
+            {% endfor %}
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <!-- ФИО -->
+      <div class="mb-3">
+        <label for="id_full_name" class="form-label">ФИО</label>
+        <input 
+          type="text" 
+          name="full_name" 
+          id="id_full_name" 
+          class="form-control"
+          placeholder="Иванов Иван Иванович"
+          required
+          value="{{ form.full_name.value|default:'' }}"
+        >
+      </div>
+
+      <!-- Email -->
+      <div class="mb-3">
+        <label for="id_email" class="form-label">Email</label>
+        <input 
+          type="email" 
+          name="email" 
+          id="id_email" 
+          class="form-control"
+          placeholder="example@mail.ru"
+          required
+          value="{{ form.email.value|default:'' }}"
+        >
+      </div>
+
+      <!-- Телефон -->
+      <div class="mb-3">
+        <label for="id_phone" class="form-label">Телефон</label>
+        <input 
+          type="tel" 
+          name="phone" 
+          id="id_phone" 
+          class="form-control"
+          placeholder="+7 (999) 123-45-67"
+          required
+          value="{{ form.phone.value|default:'' }}"
+        >
+      </div>
+
+      <!-- Пароль -->
+      <div class="mb-3">
+        <label for="id_password1" class="form-label">Пароль</label>
+        <input 
+          type="password" 
+          name="password1" 
+          id="id_password1" 
+          class="form-control"
+          placeholder="Не менее 8 символов"
+          required
+        >
+      </div>
+
+      <!-- Подтверждение пароля -->
+      <div class="mb-3">
+        <label for="id_password2" class="form-label">Повторите пароль</label>
+        <input 
+          type="password" 
+          name="password2" 
+          id="id_password2" 
+          class="form-control"
+          placeholder="Повторите пароль"
+          required
+        >
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100">Зарегистрироваться</button>
+    </form>
+
+    <div class="mt-3 text-center">
+      <span>Уже есть аккаунт? </span>
+      <a href="{% url 'accounts:login' %}" class="text-decoration-none">Войти</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

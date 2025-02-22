@@ -1,0 +1,112 @@
+/* appointments/static/appointments/css/calendar.css */
+
+/* Базовые стили календаря */
+.calendar-container {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 20px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+}
+
+/* Заголовок месяца */
+.calendar-header {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 1.5rem;
+    font-size: 2.2rem;
+    font-weight: 500;
+}
+
+/* Сетка дней */
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    margin-bottom: 1rem;
+}
+
+/* Отдельный день */
+.calendar-day {
+    padding: 1rem;
+    text-align: center;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    background: #f8f9fa;
+    border: 2px solid transparent;
+}
+
+/* Доступные дни */
+.calendar-day.available {
+    background: #e8f5e9;
+    border-color: #c8e6c9;
+    color: #2e7d32;
+}
+
+/* Выбранный день */
+.calendar-day.selected {
+    background: #e3f2fd;
+    border-color: #90caf9;
+    transform: scale(1.05);
+}
+
+/* Прошедшие дни */
+.calendar-day.past {
+    background: #f5f5f5;
+    color: #9e9e9e;
+    cursor: not-allowed;
+}
+
+/* Блок времени */
+.time-slots-container {
+    background: #f5f5f5;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1.5rem;
+}
+
+/* Элементы времени */
+.time-slot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem;
+    margin: 0.5rem 0;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+
+.time-slot:hover {
+    transform: translateX(5px);
+    background: #fff;
+}
+
+/* Кнопка подтверждения */
+.confirm-btn {
+    background: #4CAF50;
+    color: white;
+    padding: 0.8rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 1.1rem;
+    transition: background 0.3s;
+}
+
+.confirm-btn:hover {
+    background: #45a049;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .calendar-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+    
+    .calendar-day {
+        padding: 0.8rem;
+    }
+}

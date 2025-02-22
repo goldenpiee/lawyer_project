@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Панель управления записями</h2>
+    
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link {% if status == 'pending' %}active{% endif %}" 
+               href="?status=pending">Ожидающие ({{ pending_count }})</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if status == 'approved' %}active{% endif %}" 
+               href="?status=approved">Подтвержденные ({{ approved_count }})</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if status == 'rejected' %}active{% endif %}" 
+               href="?status=rejected">Отклоненные ({{ rejected_count }})</a>
+        </li>
+    </ul>
+
+    <div class="row">
+        {% for appointment in appointments %}
+        <div class="col-md-6 mb-4">
+            <div class="card {% if appointment.status == 'Pending' %}border-warning{% elif appointment.status == 'Approved' %}border-success{% else %}border-danger{% endif %}">
+                <div class="card-header">
+                    <strong>Запись #{{ appointment.id }}</strong>
+                    <span class="float-end">
+                        {{ appointment.date|date:"d.m.Y" }} в {{ appointment.date|date:"H:i" }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">Клиент: {{ appointment.client.full_name }}</h5>
+                    <p class="card-text">
+                        <strong>Телефон:</strong> {{ appointment.client.phone|default:"Не указан" }}<br>
+                        <strong>ФИО:</strong> {{ appointment.client.full_name|default:"Не указано" }}<br>
+                        <strong>Статус:</strong> 
+                        <span class="badge {% if appointment.status == 'Pending' %}bg-warning{% elif appointment.status == 'Approved' %}bg-success{% else %}bg-danger{% endif %}">
+                            {{ appointment.get_status_display }}
+                        </span>
+                    </p>
+                    
+                    {% if appointment.status == 'Pending' %}
+                    <div class="btn-group">
+                        <form method="post" action="{% url 'appointments:update_status' appointment.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="status" value="Approved">
+                            <button type="submit" class="btn btn-success me-2">Подтвердить</button>
+                        </form>
+                        <form method="post" action="{% url 'appointments:update_status' appointment.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="status" value="Rejected">
+                            <button type="submit" class="btn btn-danger">Отклонить</button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                Нет записей в этой категории
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

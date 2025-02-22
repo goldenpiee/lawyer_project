@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+    <div class="row text-center mb-4">
+        <div class="col-12">
+            <h1 class="display-4 text-outline">Юридические услуги по банкротству</h1>
+            <h2 class="mt-3 text-primary text-outline">Осипова Оксана Васильевна</h2>
+        </div>
+    </div>
+
+    <div class="row justify-content-center mb-5">
+        <div class="col-md-8">
+            <div class="card border-secondary">
+                <div class="card-body ">
+                    <h3 class="card-title mb-4 text-outline text-center">Профессиональная помощь в процедуре банкротства</h3>
+                    <ul class="list-unstyled fs-5 text-center feature-list">
+                        <li class="mb-3"><i class="bi bi-check-circle-fill text-success me-2"></i>Консультации физических и юридических лиц</li>
+                        <li class="mb-3"><i class="bi bi-check-circle-fill text-success me-2"></i>Сопровождение на всех этапах процедуры</li>
+                        <li class="mb-3"><i class="bi bi-check-circle-fill text-success me-2"></i>Законное списание долгов</li>
+                    </ul>
+                </div>
+            </div>  
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Контактная информация -->
+        <div class="col-md-4">
+            <div class="card h-100 border-primary">
+                <div class="card-header bg-primary text-white text-outline text-center">
+                    <h4>Контакты</h4>
+                </div>
+                <div class="card-body">
+                    <p class="card-text fs-5">
+                        <i class="bi bi-geo-alt-fill me-2"></i>
+                        г. Сегежа, ул. Ленина 19а<br>
+                        <i class="bi bi-clock-fill me-2"></i>
+                        Вт-Пт: 14:00 - 18:00<br>
+                        <i class="bi bi-telephone-fill me-2"></i>
+                        +7 (900) 123-45-67<br>
+                        <i class="bi bi-envelope-fill me-2"></i>
+                        osipova.bankrot@example.com
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Действия -->
+        <div class="col-md-8">
+            <div class="card h-100 border-primary">
+                <div class="card-header bg-primary text-white text-outline text-center">
+                    <h4>Запись на консультацию</h4>
+                </div>
+                <div class="card-body text-center">
+                    {% if user.is_authenticated %}
+                        <p class="fs-5 mb-4 text-outline">Добро пожаловать, {{ user.full_name }}!</p>
+                        {% if user.lawyerprofile %}
+                        <a href="{% url 'appointments:calendar' %}" class="btn btn-primary btn-lg w-75 mb-3 text-outline">
+                            <i class="bi bi-calendar-plus"></i> Управление расписанием
+                        </a>
+                        {% else %}
+                        <a href="{% if user.is_authenticated %}{% url 'appointments:calendar' %}{% else %}{% url 'accounts:login' %}?next={% url 'appointments:CA' %}{% endif %}" class="btn btn-primary btn-lg w-75 mb-3 text-outline">
+                            <i class="bi bi-calendar-plus"></i> Записаться
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'appointments:client_dashboard' %}" class="btn btn-outline-secondary btn-lg w-75 text-outline">
+                            <i class="bi bi-files"></i> Мои записи
+                        </a>
+                    {% else %}
+                        <p class="fs-5 mb-4 text-outline">Для записи требуется авторизация</p>
+                        <a href="{% url 'accounts:login' %}" class="btn btn-primary btn-lg w-75 mb-3 text-outline">
+                            <i class="bi bi-box-arrow-in-right"></i> Войти
+                        </a>
+                        <a href="{% url 'accounts:register' %}" class="btn btn-success btn-lg w-75 text-outline">
+                            <i class="bi bi-person-plus"></i> Регистрация
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

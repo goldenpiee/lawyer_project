@@ -1,0 +1,41 @@
+<!-- templates/appointments/select_slot.html -->
+{% extends 'base.html' %}
+{% block content %}
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-danger">{{ message }}</div>
+    {% endfor %}
+{% endif %}
+<div class="container my-5">
+    <h2 class="mb-4">Выберите удобное время</h2>
+    
+    <div class="mt-4">
+        <a href="{% url 'appointments:calendar' %}" class="btn btn-secondary mb-3">Вернуться к календарю</a>
+    </div>
+
+    <div class="row">
+        {% for slot in slots %}
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ slot.start_time|date:"d M H:i" }}</h5>
+                    <form method="post" action="{% url 'create_appointment' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="slot_id" value="{{ slot.id }}">
+                        <button type="submit" class="btn btn-primary w-100">
+                            Выбрать это время
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                Нет доступных слотов для записи. Пожалуйста, проверьте позже.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

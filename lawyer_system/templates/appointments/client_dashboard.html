@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+    <h2 class="mb-4 text-center">Ваши заявки</h2>
+    {% if appointments %}
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-primary">
+                <tr>
+                    <th scope="col">Дата</th>
+                    <th scope="col">Статус</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for appointment in appointments %}
+                <tr>
+                    <td>{{ appointment.date|date:"d.m.Y H:i" }}</td>
+                    <td>
+                        {% if appointment.status == "Pending" %}
+                            <span style="color:secondary; font-weight:bold; background-color:rgba(255,255,0,0.3); padding:0.2rem 0.4rem; border-radius:4px;">Ожидает подтверждение</span>
+                        {% elif appointment.status == "Rejected" %}
+                            <span style="color:red; font-weight:bold; background-color:rgba(255,0,0,0.3); padding:0.2rem 0.4rem; border-radius:4px;">Запись отменена</span>
+                        {% elif appointment.status == "Approved" %}
+                            <span style="color:green; font-weight:bold; background-color:rgba(0,128,0,0.3); padding:0.2rem 0.4rem; border-radius:4px;">Запись подтверждена</span>
+                        {% else %}
+                            <span style="font-weight:bold;">{{ appointment.status }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-center">Нет записей</p>
+    {% endif %}
+</div>
+{% endblock %}
